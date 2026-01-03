@@ -28,13 +28,18 @@ const Navbar = () => {
   
   const navRef = useRef(null);
   const searchInputRef = useRef(null);
-  // We still need location just to close mobile menu on route change if needed, 
-  // but we won't use it for the underlines anymore.
-  const location = useLocation(); 
 
   const toggleMenu = (menuName) => setActiveMenu(activeMenu === menuName ? null : menuName);
   const closeMenu = () => setActiveMenu(null);
   const toggleMobileSection = (section) => setMobileExpanded(prev => ({ ...prev, [section]: !prev[section] }));
+
+  // --- HELPER: Generate Links for Mobile Items ---
+  const getMobileLink = (category, item) => {
+    const slug = item.toLowerCase().replace(/ /g, '-');
+    if (category === 'services') return `/services/${slug}`;
+    if (category === 'therapeutic') return `/services/${slug}`; 
+    return '/contact'; 
+  };
 
   // --- EFFECTS ---
   useEffect(() => {
@@ -65,63 +70,31 @@ const Navbar = () => {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    const widget = document.getElementById('google_translate_element');
-    const desktopContainer = document.getElementById('desktop-lang-container');
-    const mobileContainer = document.getElementById('mobile-lang-container');
-
-    if (widget && desktopContainer && mobileContainer) {
-      if (isMobileMenuOpen) mobileContainer.appendChild(widget);
-      else desktopContainer.appendChild(widget);
-    }
-  }, [isMobileMenuOpen]);
-
   const handleLanguageClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    const trigger = e.currentTarget; 
-    const rect = trigger.getBoundingClientRect(); 
     const googleButton = document.querySelector('.goog-te-gadget-simple');
     if (googleButton) googleButton.click();
-
-    let attempts = 0;
-    const forcePosition = setInterval(() => {
-      const iframe = document.querySelector('.goog-te-menu-frame');
-      if (iframe) {
-        iframe.style.position = 'fixed';
-        iframe.style.top = `${rect.bottom + 10}px`; 
-        iframe.style.left = `${rect.left}px`;       
-        iframe.style.display = 'none';
-        iframe.style.zIndex = '99999999';
-      }
-      attempts++;
-      if (attempts > 50) clearInterval(forcePosition); 
-    }, 10);
   };
 
-  // --- REUSABLE COMPONENT: MEGA MENU TRIGGER ---
+  // --- COMPONENTS ---
   const NavItem = ({ name, label }) => {
-    // UPDATED LOGIC: Underline ONLY if this specific menu is currently OPEN.
     const isMenuOpen = activeMenu === name;
-
     return (
       <div className="relative h-full flex items-center">
         <button 
           onClick={() => toggleMenu(name)} 
-          className={`text-white font-bold text-base flex items-center gap-1 hover:text-primary transition-colors relative
-            ${isMenuOpen ? 'text-primary' : ''}`}
+          className={`font-bold text-base flex items-center gap-1 hover:text-primary transition-colors relative
+            ${isMenuOpen ? 'text-primary' : 'text-white'}`}
         >
           {label} 
           <FaChevronDown size={10} className={`transition-transform duration-300 ${isMenuOpen ? 'rotate-180' : ''}`} />
-          
-          {/* UNDERLINE: Only visible when isMenuOpen is true */}
           <span className={`absolute -bottom-2 left-0 w-full h-[2px] bg-white transition-all duration-300 ${isMenuOpen ? 'scale-x-100 opacity-100' : 'scale-x-0 opacity-0'}`}></span>
         </button>
       </div>
     );
   };
 
-  // --- REUSABLE COMPONENT: DIRECT LINK (About Us) ---
   const NavLinkItem = ({ to, label }) => (
     <div className="relative h-full flex items-center">
       <Link 
@@ -130,16 +103,17 @@ const Navbar = () => {
         className="group text-white font-bold text-sm flex items-center gap-1 hover:text-primary transition-colors relative"
       >
         {label}
-        {label === 'About Us' && <FaChevronDown size={9} />}
-        
-        {/* UNDERLINE: Only visible on HOVER (group-hover) */}
         <span className="absolute -bottom-2 left-0 w-full h-[2px] bg-white transition-all duration-300 scale-x-0 opacity-0 group-hover:scale-x-100 group-hover:opacity-100 origin-left"></span>
       </Link>
     </div>
   );
 
   return (
-    <header className="absolute top-0 left-0 w-full z-50 bg-gradient-to-b from-darkBlue/90 via-darkBlue/60 to-transparent font-sans" ref={navRef}>
+    // RESTORED: Absolute + Transparent Gradient on ALL pages
+    <header 
+      ref={navRef}
+      className="absolute top-0 left-0 w-full z-50 bg-gradient-to-b from-darkBlue/90 via-darkBlue/60 to-transparent font-sans"
+    >
       <div id="google_translate_element" style={{ display: 'none' }}></div> 
 
       <div className="max-w-[1440px] mx-auto px-6 py-4 flex justify-between items-center relative z-50">
@@ -149,6 +123,7 @@ const Navbar = () => {
           </Link>
         </div>
 
+        {/* DESKTOP NAV */}
         <div className="hidden md:flex flex-col items-end gap-2">
           {/* TOP BAR */}
           <div className="flex gap-4 text-[11px] text-white font-bold uppercase tracking-wider items-center">
@@ -158,7 +133,6 @@ const Navbar = () => {
             >
               <FaGlobe size={13} className="mt-[1px]" />
               <span className="text-[11px] font-bold uppercase tracking-wider truncate">{currentLang}</span>
-              <div id="desktop-lang-container" className="hidden"></div>
             </div>
 
             <button 
@@ -171,21 +145,19 @@ const Navbar = () => {
             </button>
           </div>
 
-          {/* MAIN NAV - No more 'isActive' props passed! */}
+          {/* MAIN NAV LINKS */}
           <nav className="flex items-center gap-10">
             <NavItem name="services" label="Services" />
             <NavItem name="therapeutic" label="Therapeutic Expertise" />
             <NavItem name="innovation" label="Innovation" />
             <NavItem name="resources" label="Resources" />
-            
             <NavLinkItem to="/about" label="About Us" />
-            
             <NavItem name="careers" label="Careers" />
-            
             <Link to="/contact" className="bg-primary hover:bg-[#00629b] text-white text-xs font-bold uppercase px-6 py-3 rounded-full transition-all shadow-md">Contact Us</Link>
           </nav>
         </div>
 
+        {/* MOBILE HAMBURGER BUTTON */}
         <div className="md:hidden">
           <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-white text-2xl focus:outline-none">
             {isMobileMenuOpen ? <FaTimes /> : <FaBars />}
@@ -193,7 +165,7 @@ const Navbar = () => {
         </div>
       </div>
       
-      {/* Search Drawer */}
+      {/* SEARCH DRAWER */}
       <div 
         id="search-drawer"
         className={`absolute top-full left-0 w-full bg-white shadow-xl transition-all duration-300 ease-out overflow-hidden z-40 origin-top
@@ -210,30 +182,56 @@ const Navbar = () => {
         </div>
       </div>
 
-       <div className={`fixed inset-0 bg-[#140B42] z-40 transition-transform duration-300 ease-in-out flex flex-col pt-24 px-6 overflow-y-auto md:hidden ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-         {/* Mobile Menu Logic (unchanged) */}
+      {/* =======================
+          MOBILE MENU OVERLAY
+      ======================== */}
+      <div className={`fixed inset-0 bg-[#140B42] z-40 transition-transform duration-300 ease-in-out flex flex-col pt-24 px-6 overflow-y-auto md:hidden ${isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+         
          <div className="flex justify-between items-center mb-8 border-b border-white/20 pb-4">
            <div className="relative flex items-center gap-2 text-white w-[150px] h-[40px]" onClick={handleLanguageClick}>
               <FaGlobe /> 
               <span className="text-sm font-bold uppercase truncate">{currentLang}</span>
-              <div id="mobile-lang-container" className="hidden"></div>
            </div>
            <div className="text-white text-lg"><FaSearch /></div>
         </div>
+
         <div className="flex flex-col gap-2 text-white pb-20">
           {Object.keys(NAV_DATA).map(key => (
             <div key={key} className="border-b border-white/10">
               <button onClick={() => toggleMobileSection(key)} className="flex justify-between items-center w-full text-lg font-bold py-3 capitalize">
                 {key === 'therapeutic' ? 'Therapeutic Expertise' : key} {mobileExpanded[key] ? <FaMinus size={12}/> : <FaPlus size={12}/>}
               </button>
-              {mobileExpanded[key] && <div className="pl-4 pb-4 flex flex-col gap-3 text-sm text-gray-300">{NAV_DATA[key].map(item => <Link key={item} to="#" className="hover:text-primary">{item}</Link>)}</div>}
+              
+              {/* DROPDOWN LINKS */}
+              {mobileExpanded[key] && (
+                <div className="pl-4 pb-4 flex flex-col gap-3 text-sm text-gray-300">
+                  {NAV_DATA[key].map(item => (
+                    <Link 
+                      key={item} 
+                      // 1. DYNAMIC LINK GENERATION
+                      to={getMobileLink(key, item)} 
+                      // 2. CLOSE MENU ON CLICK
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="hover:text-primary py-1 block"
+                    >
+                      {item}
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
-          <div className="border-b border-white/10"><Link to="/about" className="flex justify-between items-center w-full text-lg font-bold py-3" onClick={() => setIsMobileMenuOpen(false)}>About Us</Link></div>
+
+          {/* STATIC LINKS */}
+          <div className="border-b border-white/10">
+            <Link to="/about" className="flex justify-between items-center w-full text-lg font-bold py-3" onClick={() => setIsMobileMenuOpen(false)}>About Us</Link>
+          </div>
+          
           <Link to="/contact" className="mt-8 bg-primary text-center text-white py-3 rounded-full font-bold uppercase shadow-lg" onClick={() => setIsMobileMenuOpen(false)}>Contact Us</Link>
         </div>
       </div>
 
+      {/* MEGA MENUS (Desktop) */}
       <div className="hidden md:block">
         {activeMenu === 'services' && <ServicesMenu closeMenu={closeMenu} />}
         {activeMenu === 'therapeutic' && <TherapeuticMenu closeMenu={closeMenu} />}
